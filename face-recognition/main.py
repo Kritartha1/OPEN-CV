@@ -13,23 +13,25 @@ parser.add_argument("-name", "--name", type=str, help="Name of the person for da
 args = parser.parse_args()
 
 def frame_norm(frame, bbox):
-    normVals = np.full(len(bbox), frame.shape[0])
-    normVals[::2] = frame.shape[1]
-    return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
+    normVals = np.full(len(bbox), frame.shape[0])#array of length bbox filled with value=frame.shape[0]
+
+    normVals[::2] = frame.shape[1] #values at 0,2,4,6....indexes=frame.shape[1]
+    return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int) #returns normVals array but negative values are clipped to 0 and values >=1 are kept intact.
 
 VIDEO_SIZE = (1072, 1072)
 databases = "databases"
 if not os.path.exists(databases):
     os.mkdir(databases)
 
+#Putting text in the frame
 class TextHelper:
     def __init__(self) -> None:
-        self.bg_color = (0, 0, 0)
-        self.color = (255, 255, 255)
-        self.text_type = cv2.FONT_HERSHEY_SIMPLEX
-        self.line_type = cv2.LINE_AA
+        self.bg_color = (0, 0, 0)#black
+        self.color = (255, 255, 255)#white
+        self.text_type = cv2.FONT_HERSHEY_SIMPLEX #font style
+        self.line_type = cv2.LINE_AA #type of line
     def putText(self, frame, text, coords):
-        cv2.putText(frame, text, coords, self.text_type, 1.0, self.bg_color, 4, self.line_type)
+        cv2.putText(frame, text, coords, self.text_type, 1.0, self.bg_color, 4, self.line_type) #font scale=1 and thickness =4
         cv2.putText(frame, text, coords, self.text_type, 1.0, self.color, 2, self.line_type)
 
 class FaceRecognition:
@@ -42,26 +44,31 @@ class FaceRecognition:
         self.line_type = cv2.LINE_AA
         self.printed = True
 
-    def cosine_distance(self, a, b):
+    def cosine_distance(self, a, b): #cosine returns similarity between two vectors
         if a.shape != b.shape:
             raise RuntimeError("array {} shape not match {}".format(a.shape, b.shape))
-        a_norm = np.linalg.norm(a)
-        b_norm = np.linalg.norm(b)
-        return np.dot(a, b.T) / (a_norm * b_norm)
+        a_norm = np.linalg.norm(a)   #modulus of vecotr a
+        b_norm = np.linalg.norm(b)   #modulus of vecotr b
+        return np.dot(a, b.T) / (a_norm * b_norm)   #cos(theta)= A.B/mod(A).mod(B)
+        #cosine value higher means angle smaller i.e similarity high!!!
 
-    def new_recognition(self, results):
+    def new_recognition(self, results): #will return name array of the most matched person with value: i.e name=[disimilarity,name]
         conf = []
         max_ = 0
         label_ = None
-        for label in list(self.labels):
-            for j in self.db_dic.get(label):
+        for label in list(self.labels): #in read_db method ,there is  self.labels = []
+            for j in self.db_dic.get(label): #db_dic : dictionary of person data with name as label and data array as value
                 conf_ = self.cosine_distance(j, results)
                 if conf_ > max_:
                     max_ = conf_
                     label_ = label
 
-        conf.append((max_, label_))
+        conf.append((max_, label_)) #max_=max similarity between result and a data with label as person name
         name = conf[0] if conf[0][0] >= 0.5 else (1 - conf[0][0], "UNKNOWN")
+        #if similarity is >=0.5 ,then the face is of person name="{label_}"
+        #1 - conf[0][0] is dis-similarity between result and a data with label as person name.
+
+
         # self.putText(frame, f"name:{name[1]}", (coords[0], coords[1] - 35))
         # self.putText(frame, f"conf:{name[0] * 100:.2f}%", (coords[0], coords[1] - 10))
 
@@ -74,18 +81,19 @@ class FaceRecognition:
         for file in os.listdir(databases_path):
             filename = os.path.splitext(file)
             if filename[1] == ".npz":
-                self.labels.append(filename[0])
+                self.labels.append(filename[0]) #getting the names from the database
 
         self.db_dic = {}
         for label in self.labels:
             with np.load(f"{databases_path}/{label}.npz") as db:
-                self.db_dic[label] = [db[j] for j in db.files]
+                self.db_dic[label] = [db[j] for j in db.files] #saving database as key:person name and val:array of all the datas.
 
     def putText(self, frame, text, coords):
         cv2.putText(frame, text, coords, self.text_type, 1, self.bg_color, 4, self.line_type)
         cv2.putText(frame, text, coords, self.text_type, 1, self.color, 1, self.line_type)
 
     def create_db(self, results):
+        #if name is not given as parameter then don't create db.
         if self.name is None:
             if not self.printed:
                 print("Wanted to create new DB for this face, but --name wasn't specified")
@@ -94,11 +102,12 @@ class FaceRecognition:
         print('Saving face...')
         try:
             with np.load(f"{databases}/{self.name}.npz") as db:
-                db_ = [db[j] for j in db.files][:]
+                #db.file
+                db_ = [db[j] for j in db.files][:] #db[i][:] all contents of ith row
         except Exception as e:
             db_ = []
         db_.append(np.array(results))
-        np.savez_compressed(f"{databases}/{self.name}", *db_)
+        np.savez_compressed(f"{databases}/{self.name}", *db_)#save all data of db_ at database/name.npz file
         self.adding_new = False
 
 print("Creating pipeline...")
