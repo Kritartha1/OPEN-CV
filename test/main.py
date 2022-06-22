@@ -27,7 +27,11 @@ def frame_norm(frame, bbox):
     return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int) #returns normVals array but negative values are clipped to 0 and values >=1 are kept intact.
     #np.clip(np.array(bbox), 0, 1)=[0.2,0.3]
     #(np.clip(np.array(bbox), 0, 1) * normVals).astype(int)=[30,80]
-   
+
+def log_softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return np.log(e_x / e_x.sum())
+
 VIDEO_SIZE = (1072, 1072)
 databases = "databases"
 if not os.path.exists(databases):
@@ -167,14 +171,14 @@ cam.video.link(host_face_out.input)
 # wait (freeze). Copying frames and setting ImageManip pool size to
 # higher number will fix this issue.
 copy_manip = pipeline.create(dai.node.ImageManip)
-cam.preview.link(copy_manip.inputImage)
+cam.preview.link(copy_manip.inputImage)  #putting color camera imageoutput to image manip i/p
 copy_manip.setNumFramesPool(20)
 copy_manip.setMaxOutputFrameSize(1072*1072*3)
 
 # ImageManip that will crop the frame before sending it to the Face detection NN node
 face_det_manip = pipeline.create(dai.node.ImageManip)
 face_det_manip.initialConfig.setResize(300, 300) #300*300
-copy_manip.out.link(face_det_manip.inputImage)
+copy_manip.out.link(face_det_manip.inputImage) #setting copy_manip output to face_det_manip's input.
 
 # NeuralNetwork
 print("Creating Face Detection Neural Network...")
@@ -217,6 +221,28 @@ headpose_manip.out.link(headpose_nn.input)
 headpose_nn.out.link(script.inputs['headpose_in'])
 headpose_nn.passthrough.link(script.inputs['headpose_pass'])
 
+#################################################################################################################
+#NN mask 1
+print("Creating Mask recognition NN ImageManip")
+mask_rec_manip = pipeline.create(dai.node.ImageManip)
+mask_rec_manip.initialConfig.setResize(224, 224)
+mask_rec_manip.setWaitForConfigInput(True)
+script.outputs['manip_cfg'].link(mask_rec_manip.inputConfig)
+script.outputs['manip_img'].link(mask_rec_manip.inputImage)
+
+# Second stange recognition NN---Mask
+print("Creating recognition Neural Network for mask...")
+mask_rec_nn = pipeline.create(dai.node.NeuralNetwork)
+mask_rec_nn.setBlobPath(blobconverter.from_zoo(name="sbd_mask_classification_224x224", zoo_type="depthai", shaves=6))
+mask_rec_manip.out.link(mask_rec_nn.input)
+
+
+mask_rec_xout = pipeline.create(dai.node.XLinkOut)
+mask_rec_xout.setStreamName("mask-recognition")
+mask_rec_nn.out.link(mask_rec_xout.input)
+########################################################################################################################################
+
+
 print("Creating face recognition ImageManip/NN")
 
 face_rec_manip = pipeline.create(dai.node.ImageManip)
@@ -242,7 +268,7 @@ with dai.Device(pipeline) as device:
 
     queues = {}
     # Create output queues
-    for name in ["color", "detection", "recognition"]:
+    for name in ["color", "detection", "recognition","mask-recognition"]:
         queues[name] = device.getOutputQueue(name)
 
     while True:
@@ -255,14 +281,27 @@ with dai.Device(pipeline) as device:
         if msgs is not None:
             frame = msgs["color"].getCvFrame() 
             dets = msgs["detection"].detections
+            #mask-recognitions = msgs["mask-recognition"]
 
             for i, detection in enumerate(dets):
                 bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
                 cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
 
                 features = np.array(msgs["recognition"][i].getFirstLayerFp16())
+                
                 conf, name = facerec.new_recognition(features)  #conf: [cosine,name]
-                text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
+                
+
+                rec = np.array(msgs["mask-recognition"][i].getFirstLayerFp16())
+                #rec = mask-recognitions[i].getFirstLayerFp16()
+                index = np.argmax(log_softmax(rec))
+                text = "No Mask"
+                color = (0,0,255) # Red
+                if index == 1:
+                    text = "Mask"
+                    color = (0,255,0)
+                text.putText(frame, f"{name} {(100*conf):.0f}% {text}", (bbox[0] + 10,bbox[1] + 35))
+
 
             cv2.imshow("color", cv2.resize(frame, (800,800)))
 
