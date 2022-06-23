@@ -54,7 +54,9 @@ while True:
             cfg = ImageManipConfig()
             correct_bb(det)
             cfg.setCropRect(det.xmin, det.ymin, det.xmax, det.ymax)
+            ################################
             cfg.setResize(60, 60)
+            ################################
             cfg.setKeepAspectRatio(False)
             node.io['manip_cfg'].send(cfg)
             node.io['manip_img'].send(img)
@@ -77,6 +79,7 @@ while True:
         # node.warn('HP' + str(img))
         # node.warn('bb' + str(bb))
         cfg = ImageManipConfig()
+        cfg2= ImageManipConfig()
         rr = RotatedRect()
         rr.center.x = (bb.xmin + bb.xmax) / 2
         rr.center.y = (bb.ymin + bb.ymax) / 2
@@ -84,9 +87,21 @@ while True:
         rr.size.height = bb.ymax - bb.ymin
         rr.angle = r # Rotate the rect in opposite direction
         # True = coordinates are normalized (0..1)
+        
         cfg.setCropRotatedRect(rr, True)
-        cfg.setResize(112, 112)
+        cfg.setResize(112, 112) 
         cfg.setKeepAspectRatio(True)
 
-        node.io['manip2_cfg'].send(cfg)
+        ####cfg2 --created to take care of the mask recognition
+        cfg2.setCropRotatedRect(rr, True)
+        cfg2.setResize(224, 224)  ####224*224
+        cfg2.setKeepAspectRatio(True)
+        ##########################################
+
+        #manip2 for face recognition
+        node.io['manip2_cfg'].send(cfg) 
         node.io['manip2_img'].send(img)
+
+        #manip3 for mask recognition
+        node.io['manip3_cfg'].send(cfg2)
+        node.io['manip3_img'].send(img)
