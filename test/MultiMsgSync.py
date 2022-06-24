@@ -21,6 +21,14 @@ class TwoStageHostSeqSync:
             # Append recognition msgs to an array
             self.msgs[seq]["recognition"].append(msg)
             # print(f'Added recognition seq {seq}, total len {len(self.msgs[seq]["recognition"])}')
+            
+        if "mask-recognition" not in self.msgs[seq]:
+            self.msgs[seq]["mask-recognition"] = [] # Create recognition array
+
+        if name == "mask-recognition":
+            # Append recognition msgs to an array
+            self.msgs[seq]["mask-recognition"].append(msg)
+            # print(f'Added recognition seq {seq}, total len {len(self.msgs[seq]["recognition"])}')
 
         elif name == "detection":
             # Save detection msg in the directory
@@ -44,7 +52,7 @@ class TwoStageHostSeqSync:
             if "color" in msgs and "len" in msgs:
 
                 # Check if all detected objects (faces) have finished recognition inference
-                if msgs["len"] == len(msgs["recognition"]):
+                if msgs["len"] == len(msgs["recognition"]) and msgs["len"] == len(msgs["mask-recognition"]):
                     # print(f"Synced msgs with sequence number {seq}", msgs)
 
                     # We have synced msgs, remove previous msgs (memory cleaning)

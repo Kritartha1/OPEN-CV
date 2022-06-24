@@ -296,12 +296,18 @@ with dai.Device(pipeline) as device:
                 rec = np.array(msgs["mask-recognition"][i].getFirstLayerFp16())
                 #rec = mask-recognitions[i].getFirstLayerFp16()
                 index = np.argmax(log_softmax(rec))
-                text = "No Mask"
+                texts = "No Mask"
                 color = (0,0,255) # Red
                 if index == 1:
-                    text = "Mask"
+                    texts = "Mask"
                     color = (0,255,0)
-                text.putText(frame, f"{name} {(100*conf):.0f}% {text}", (bbox[0] + 10,bbox[1] + 35))
+                    
+                #text.putText(frame, f"{name} {(100*conf):.0f}% {texts}", (bbox[0] + 10,bbox[1] + 35))
+
+                text.putText(frame, f"{name} {(100*conf):.0f}% ", (bbox[0] + 10,bbox[1] + 35))
+                y = (bbox[1] + bbox[3]) // 2
+                cv2.putText(frame, texts, (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 0), 4)
+                cv2.putText(frame, texts, (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (255, 255, 255), 2)
 
 
             cv2.imshow("color", cv2.resize(frame, (800,800)))
