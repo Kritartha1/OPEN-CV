@@ -21,6 +21,7 @@ class TwoStageHostSeqSync:
             # Append recognition msgs to an array
             self.msgs[seq]["recognition"].append(msg)
             # print(f'Added recognition seq {seq}, total len {len(self.msgs[seq]["recognition"])}')
+            
         if "mask-recognition" not in self.msgs[seq]:
             self.msgs[seq]["mask-recognition"] = [] # Create recognition array
 
