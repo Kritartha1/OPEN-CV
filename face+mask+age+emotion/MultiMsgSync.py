@@ -29,12 +29,12 @@ class TwoStageHostSeqSync:
             self.msgs[seq]["mask-recognition"].append(msg)
             # print(f'Added recognition seq {seq}, total len {len(self.msgs[seq]["recognition"])}')
 
-        if "age-gender-recognition" not in self.msgs[seq]:
-            self.msgs[seq]["age-gender-recognition"] = [] # Create recognition array
+        if "ageGender-recognition" not in self.msgs[seq]:
+            self.msgs[seq]["ageGender-recognition"] = [] # Create recognition array
 
-        if name == "age-gender-recognition":
+        if name == "ageGender-recognition":
             # Append recognition msgs to an array
-            self.msgs[seq]["age-gender-recognition"].append(msg)
+            self.msgs[seq]["ageGender-recognition"].append(msg)
             # print(f'Added recognition seq {seq}, total len {len(self.msgs[seq]["recognition"])}')
 
 
@@ -60,7 +60,7 @@ class TwoStageHostSeqSync:
             if "color" in msgs and "len" in msgs:
 
                 # Check if all detected objects (faces) have finished recognition inference
-                if msgs["len"] == len(msgs["recognition"]) and msgs["len"] == len(msgs["mask-recognition"]) and msgs["len"] == len(msgs["age-gender-recognition"]):
+                if msgs["len"] == len(msgs["recognition"]) and msgs["len"] == len(msgs["mask-recognition"]) and msgs["len"] == len(msgs["ageGender-recognition"]):
                     # print(f"Synced msgs with sequence number {seq}", msgs)
 
                     # We have synced msgs, remove previous msgs (memory cleaning)

@@ -303,7 +303,8 @@ with dai.Device(pipeline) as device:
                     color = (0,255,0)
                     
                 #text.putText(frame, f"{name} {(100*conf):.0f}% {texts}", (bbox[0] + 10,bbox[1] + 35))
-
+                if not os.path.exists(f"{databases}/{name}/{name}.png"):
+                    cv2.imwrite(f"{databases}/{name}/{name}.png", frame)
                 text.putText(frame, f"{name} {(100*conf):.0f}% ", (bbox[0] + 10,bbox[1] + 35))
                 y = (bbox[1] + bbox[3]) // 2
                 cv2.putText(frame, texts, (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 0), 4)

@@ -25,7 +25,7 @@ def frame_norm(frame, bbox):
     #normalization
     
     return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int) #returns normVals array but negative values are clipped to 0 and values >=1 are kept intact.
-    #np.clip(np.array(bbox), 0, 1)=[0.2,0.3]
+    #np.clip(np.array(bqbox), 0, 1)=[0.2,0.3]
     #(np.clip(np.array(bbox), 0, 1) * normVals).astype(int)=[30,80]
 
 def log_softmax(x):
@@ -247,8 +247,8 @@ print("Creating Age gender recognition NN ImageManip")
 age_gender_manip = pipeline.create(dai.node.ImageManip)
 age_gender_manip.initialConfig.setResize(62, 62)
 age_gender_manip.setWaitForConfigInput(True)
-image_manip_script.outputs['manip4_cfg'].link(age_gender_manip.inputConfig)
-image_manip_script.outputs['manip4_img'].link(age_gender_manip.inputImage)
+script.outputs['manip4_cfg'].link(age_gender_manip.inputConfig)
+script.outputs['manip4_img'].link(age_gender_manip.inputImage)
 
  # Second stange recognition NN---Age gender
 print("Creating recognition Neural Network for age gender...")
@@ -257,7 +257,7 @@ age_gender_nn.setBlobPath(blobconverter.from_zoo(name="age-gender-recognition-re
 age_gender_manip.out.link(age_gender_nn.input)
 
 age_gender_xout = pipeline.create(dai.node.XLinkOut)
-age_gender_xout.setStreamName("recognition")
+age_gender_xout.setStreamName("ageGender-recognition")
 age_gender_nn.out.link(age_gender_xout.input)
 
 
@@ -288,7 +288,7 @@ with dai.Device(pipeline) as device:
 
     queues = {}
     # Create output queues
-    for name in ["color", "detection", "recognition","mask-recognition","age-gender-recognition"]:
+    for name in ["color", "detection", "recognition","mask-recognition","ageGender-recognition"]:
         queues[name] = device.getOutputQueue(name)
 
     while True:
@@ -300,8 +300,10 @@ with dai.Device(pipeline) as device:
         msgs = sync.get_msgs()
         if msgs is not None:
             frame = msgs["color"].getCvFrame() 
-            dets = msgs["detection"].detections
+            dets = msgs["detection"].detections    
             #mask-recognitions = msgs["mask-recognition"]
+            
+            
 
             for i, detection in enumerate(dets):
                 bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
@@ -321,20 +323,39 @@ with dai.Device(pipeline) as device:
                     texts = "Mask"
                     color = (0,255,0)
 
-                #rec = np.array(msgs["age-gender-recognition"][i].getFirstLayerFp16())
-                 # Decoding of age-gender-recognition results
-                age_gen_rec = recognitions[i]
-                age = int(float(np.squeeze(np.array(age_gen_rec.getLayerFp16('age_conv3')))) * 100)
-                gender = np.squeeze(np.array(age_gen_rec.getLayerFp16('prob')))
+##############################################################################################################################################################3
+                # rec = np.array(msgs["age-gender-recognition"][i].getFirstLayerFp16("age_conv3"))
+                # rec2 = np.array(msgs["age-gender-recognition"][i].getFirstLayerFp16('prob'))
+                #        ## # Decoding of age-gender-recognition results
+                #        ## # age_gen_rec = recognitions[i]
+                # age = int(float(np.squeeze(rec)) * 100)
+                # gender = np.squeeze(rec2)
+                # gender_str = "female" if gender[0] > gender[1] else "male"
+
+
+                #rec =ageGender-recognition[i]
+                age = int(float(np.squeeze(np.array( msgs["ageGender-recognition"][i].getLayerFp16('age_conv3')))) * 100)
+                gender = np.squeeze(np.array( msgs["ageGender-recognition"][i].getLayerFp16('prob')))
                 gender_str = "female" if gender[0] > gender[1] else "male"
+################################################################################################################################################################
 
                     
-                #text.putText(frame, f"{name} {(100*conf):.0f}% {texts}", (bbox[0] + 10,bbox[1] + 35))
+                ###text.putText(frame, f"{name} {(100*conf):.0f}% {texts}", (bbox[0] + 10,bbox[1] + 35))
 
-                text.putText(frame, f"{name} {(100*conf):.0f}% ", (bbox[0] + 10,bbox[1] + 35))
-                y = (bbox[1] + bbox[3]) // 2
-                cv2.putText(frame, texts, (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 0), 4)
-                cv2.putText(frame, texts, (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (255, 255, 255), 2)
+                # text.putText(frame, f"{name} {(100*conf):.0f}%  ", (bbox[0] + 10,bbox[1] + 35))
+                # y = (bbox[1] + bbox[3]) // 2
+                # cv2.putText(frame, texts, (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 0), 4)
+                # cv2.putText(frame, texts, (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (255, 255, 255), 2)
+
+                
+                # y = (bbox[1] + bbox[3]) // 2
+                # cv2.putText(frame, str(age), (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 0), 8)
+                # cv2.putText(frame, str(age), (bbox[0], y), cv2.FONT_HERSHEY_TRIPLEX, 1, (255, 255, 255), 2)
+                # cv2.putText(frame, gender_str, (bbox[0], y + 30), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 0), 8)
+                # cv2.putText(frame, gender_str, (bbox[0], y + 30), cv2.FONT_HERSHEY_TRIPLEX, 1, (255, 255, 255), 2)
+
+
+                text.putText(frame, f"{name} {(100*conf):.0f}% \n {texts} \n {age} {gender_str}", (bbox[0] + 10,bbox[1] + 35))
 
 
             cv2.imshow("color", cv2.resize(frame, (800,800)))

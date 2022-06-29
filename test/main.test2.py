@@ -101,7 +101,7 @@ class FaceRecognition:
             newpath=databases_path  #C:opencv/test/databases/id
             newpath=os.path.join(newpath,folder)
             files=os.listdir(newpath)   #npz, png
-            #
+            #files=[abc.npz,abc.png ]
             filename = os.path.splitext(files[0])  #abc.npz   abc  npz
             if filename[1] == ".npz":
                 self.labels.append(filename[0]) #getting the names from the database
@@ -129,7 +129,7 @@ class FaceRecognition:
             return
         print('Saving face...')
         try:
-            with np.load(f"{databases/self.name}/{self.name}.npz") as db:
+            with np.load(f"{databases}/{self.name}/{self.name}.npz") as db:
                 #db.file
                 db_ = [db[j] for j in db.files][:] #db[i][:] all contents of ith row
         except Exception as e:
@@ -148,9 +148,12 @@ class FaceRecognition:
         #[unknown]:[unknown.png,unknown.npz]
         #----->[p2]:[p2.png,p2.npz]
         name_=self.name
-        os.mkdir(databases/name_)
+        os.mkdir(f"{databases}/{name}")
+        
+
         #id --->id.npz
-        np.savez_compressed(f"{databases/name_}/{name_}", *db_)#save all data of db_ at database/name.npz file
+        #####check npzsavez_compressed
+        np.savez_compressed(f"{databases}/{name_}/{name_}", *db_)#save all data of db_ at database/name.npz file
         #databases/name_/name_.npz
         #databases/name_/name_.png
         # cv2.imwrite(name_, img)
