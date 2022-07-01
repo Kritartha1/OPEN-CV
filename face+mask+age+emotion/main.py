@@ -12,6 +12,8 @@ parser.add_argument("-name", "--name", type=str, help="Name of the person for da
 
 args = parser.parse_args()
 
+emotions = ['neutral', 'happy', 'sad', 'surprise', 'anger']
+
 def frame_norm(frame, bbox):
     #bbox=[0.2,0.3]--> returned by neural network output. 
     #NN model returns frames into normal form within [0,1] range .
@@ -262,7 +264,27 @@ age_gender_nn.out.link(age_gender_xout.input)
 
 
 ##############################################################################333
+#NN 3-Emotion rec
+print("Creating emotion recognition NN ImageManip")
+emotion_manip = pipeline.create(dai.node.ImageManip)
+emotion_manip.initialConfig.setResize(64, 64)
+emotion_manip.setWaitForConfigInput(True)
+script.outputs['manip5_cfg'].link(emotion_manip.inputConfig)
+script.outputs['manip5_img'].link(emotion_manip.inputImage)
 
+    # This ImageManip will crop the mono frame based on the NN detections. Resulting image will be the cropped
+    # face that was detected by the face-detection NN.
+emotions_nn = pipeline.create(dai.node.NeuralNetwork)
+emotions_nn.setBlobPath(blobconverter.from_zoo(name="emotions-recognition-retail-0003", shaves=6))
+emotion_manip.out.link(emotions_nn.input)
+
+emotion_recognition_xout = pipeline.create(dai.node.XLinkOut)
+emotion_recognition_xout.setStreamName("emotion-recognition")
+emotions_nn.out.link(emotion_recognition_xout.input)
+
+
+
+################################################################
 print("Creating face recognition ImageManip/NN")
 
 face_rec_manip = pipeline.create(dai.node.ImageManip)
@@ -288,7 +310,7 @@ with dai.Device(pipeline) as device:
 
     queues = {}
     # Create output queues
-    for name in ["color", "detection", "recognition","mask-recognition","ageGender-recognition"]:
+    for name in ["color", "detection", "recognition","mask-recognition","ageGender-recognition","emotion-recognition"]:
         queues[name] = device.getOutputQueue(name)
 
     while True:
@@ -338,7 +360,8 @@ with dai.Device(pipeline) as device:
                 gender = np.squeeze(np.array( msgs["ageGender-recognition"][i].getLayerFp16('prob')))
                 gender_str = "female" if gender[0] > gender[1] else "male"
 ################################################################################################################################################################
-
+                emotion_results = np.array(msgs["emotion-recognition"][i].getFirstLayerFp16())
+                emotion_name = emotions[np.argmax(emotion_results)]
                     
                 ###text.putText(frame, f"{name} {(100*conf):.0f}% {texts}", (bbox[0] + 10,bbox[1] + 35))
 
@@ -355,10 +378,13 @@ with dai.Device(pipeline) as device:
                 # cv2.putText(frame, gender_str, (bbox[0], y + 30), cv2.FONT_HERSHEY_TRIPLEX, 1, (255, 255, 255), 2)
 
 
-                text.putText(frame, f"{name} {(100*conf):.0f}% \n {texts} \n {age} {gender_str}", (bbox[0] + 10,bbox[1] + 35))
+                text.putText(frame, f"{name} {(100*conf):.0f}%  {texts} ", (bbox[0] + 10,bbox[1] + 35))
+
+                text.putText(frame, f" {age} {gender_str}  {emotion_name}", (bbox[0] + 10,bbox[1] + 65))
 
 
             cv2.imshow("color", cv2.resize(frame, (800,800)))
 
         if cv2.waitKey(1) == ord('q'):
             break
+

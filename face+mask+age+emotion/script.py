@@ -81,6 +81,7 @@ while True:
         cfg = ImageManipConfig()
         cfg2= ImageManipConfig()
         cfg3=ImageManipConfig()
+        cfg4=ImageManipConfig()
         rr = RotatedRect()
         rr.center.x = (bb.xmin + bb.xmax) / 2
         rr.center.y = (bb.ymin + bb.ymax) / 2
@@ -104,6 +105,11 @@ while True:
         cfg3.setResize(62, 62) 
         cfg3.setKeepAspectRatio(True)
 
+        ###cfg4 --created to take care of emotion recognition
+        cfg4.setCropRotatedRect(rr, True)
+        cfg4.setResize(64, 64) 
+        cfg4.setKeepAspectRatio(True)
+
         #manip2 for face recognition
         node.io['manip2_cfg'].send(cfg) 
         node.io['manip2_img'].send(img)
@@ -116,3 +122,6 @@ while True:
         node.io['manip4_cfg'].send(cfg3)
         node.io['manip4_img'].send(img)
 
+        #manip5 for emotion recognition
+        node.io['manip5_cfg'].send(cfg4)
+        node.io['manip5_img'].send(img)
