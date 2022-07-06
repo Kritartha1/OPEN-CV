@@ -1,14 +1,12 @@
 # coding=utf-8
 import os
 import argparse
-import time
-from random import Random
 import blobconverter
 import cv2
 import depthai as dai
 import numpy as np
 from MultiMsgSync import TwoStageHostSeqSync
-import random
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-name", "--name", type=str, help="Name of the person for database saving")
@@ -247,23 +245,24 @@ with dai.Device(pipeline) as device:
                 h=frame.shape[0]
                 bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
                 
-                #need to cut this frame off and save in database
+                
                 
 
                 features = np.array(msgs["recognition"][i].getFirstLayerFp16())
                 conf, name = facerec.new_recognition(features)
                 size=len(os.listdir(f"{databases}/{name}"))
-
+                #s=len(f"{databases}/{name}")
+                #print("size: ",size,"s: ",s)
                 
                 if  name!='unknown' and  id%10==0 and size<12:
-                    # img2=cv2.imread(frame)
+                    
                     # img=cv2.flip(img,0)
                     img2=frame
                     blank = np.zeros(img2.shape[:2], dtype='uint8')
                     rectangle = cv2.rectangle(blank.copy(),  (bbox[0]-10,h-bbox[1]+10), (bbox[2]+10,h-bbox[3]-10), 255, -1)
                     masked = cv2.bitwise_and(img2,img2,mask=rectangle)
                     cv2.imwrite(f"{databases}/{name}/{name}${id}.png",masked)
-                    # cv2.imwrite(f"{databases}/{name}/{name}${id}.png",img2)
+                    
             
 
                 id=id+1
@@ -276,3 +275,6 @@ with dai.Device(pipeline) as device:
 
         if cv2.waitKey(1) == ord('q'):
             break
+
+
+
