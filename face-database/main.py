@@ -66,16 +66,18 @@ class FaceRecognition:
                     label_ = label
 
         conf.append((max_, label_)) #max_=max similarity between result and a data with label as person name
-        name = conf[0] if conf[0][0] >= 0.5 else (1 - conf[0][0], "UNKNOWN")
+        
         #if similarity is >=0.5 ,then the face is of person name="{label_}"
         #1 - conf[0][0] is dis-similarity between result and a data with label as person name.
 
 
         # self.putText(frame, f"name:{name[1]}", (coords[0], coords[1] - 35))
         # self.putText(frame, f"conf:{name[0] * 100:.2f}%", (coords[0], coords[1] - 10))
-
-        if name[1] == "UNKNOWN":
+        nameText=''
+        if conf[0][0]<0.5:
             self.create_db(results)
+            nameText=self.name
+        name = conf[0] if conf[0][0] >= 0.5 else (1 - conf[0][0],nameText)
         return name
 
     def read_db(self, databases_path):
@@ -123,6 +125,7 @@ class FaceRecognition:
 
         np.savez_compressed(f"{databases}/{self.name}/{self.name}", *db_)
         self.adding_new = False
+        
 
 print("Creating pipeline...")
 pipeline = dai.Pipeline()
@@ -218,7 +221,7 @@ with dai.Device(pipeline) as device:
     
     for name in ["color", "detection", "recognition"]:
         queues[name] = device.getOutputQueue(name)
-
+    id=0
     while True:
         for name, q in queues.items():
             
@@ -226,6 +229,7 @@ with dai.Device(pipeline) as device:
                 sync.add_msg(q.get(), name)
 
         msgs = sync.get_msgs()
+        
         if msgs is not None:
             frame = msgs["color"].getCvFrame()
             dets = msgs["detection"].detections
@@ -233,13 +237,14 @@ with dai.Device(pipeline) as device:
 
             for i, detection in enumerate(dets):
                 bbox = frame_norm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
-                cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
+                
                 #need to cut this frame off and save in database
                 
 
                 features = np.array(msgs["recognition"][i].getFirstLayerFp16())
                 conf, name = facerec.new_recognition(features)
 
+                
                 if  name!='unknown' :
                     # img2=cv2.imread(frame)
                     # img=cv2.flip(img,0)
@@ -248,13 +253,15 @@ with dai.Device(pipeline) as device:
                     #cv2.imshow("blank",blank)
                     rectangle = cv2.rectangle(blank.copy(),  (bbox[0], bbox[1]), (bbox[2], bbox[3]), 255, -1)
 
-                    cv2.imshow("rectangle",rectangle)
+                    #cv2.imshow("rectangle",rectangle)
                     masked = cv2.bitwise_and(img2,img2,mask=rectangle)
                     # cv2.imshow('cropped image', masked)
                    # cv2.imshow("masked",masked)
-                    cv2.imwrite(f"{databases}/{name}/{name}.png",masked)
+                    cv2.imwrite(f"{databases}/{name}/{name}${id}.png",masked)
+                    id=id+1
 
 
+                cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (10, 245, 10), 2)
                 text.putText(frame, f"{name} {(100*conf):.0f}%", (bbox[0] + 10,bbox[1] + 35))
 
             # f=cv2.flip(frame,0)
