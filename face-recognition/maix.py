@@ -134,6 +134,9 @@ class FaceRecognition:
         
 
         np.savez_compressed(f"{databases}/{self.name}/{self.name}", *db_)
+        ########################
+        self.name=None
+        ########################
         self.adding_new = False
 
 print("Creating pipeline...")
